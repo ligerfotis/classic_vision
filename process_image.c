@@ -52,13 +52,10 @@ int kernel_y[3][3] = { { -1, -2, -1},
 							{ 0, 0, 0},
 							{ 1, 2, 1}};
 
-
-//row, col - coordinates of central pixel for calculation
-int max = 0;
 for (int row = 1; row < DIM - 1; row++) {
     for (int col = 1; col < DIM - 1; col++) {
         int cell_val = 0.0; // magnitude of cell
-        int c_a, c_b;
+        // calculate for vertical kernel
         for (int a = 0; a < 3; a++){
             for (int b = 0; b < 3; b++) {
 
@@ -66,12 +63,10 @@ for (int row = 1; row < DIM - 1; row++) {
             	int tmp_krnl = kernel_x[a][b];
 
             	cell_val += (tmp_cell * tmp_krnl);
-            	if (max < cell_val)
-            		max = cell_val;
             }
         }
         proc_img_x[row] [col] = cell_val;
-
+        // calculate for horizontal kernel
         for (int a = 0; a < 3; a++){
                     for (int b = 0; b < 3; b++) {
 
@@ -79,18 +74,16 @@ for (int row = 1; row < DIM - 1; row++) {
                     	int tmp_krnl = kernel_y[a][b];
 
                     	cell_val += (tmp_cell * tmp_krnl);
-                    	if (max < cell_val)
-                    			max = cell_val;
                     }
                 }
 		proc_img_y[row] [col] = cell_val;
 
    }
 }
-
+// combine and normalize filtered image
 for (int i=0; i < DIM; i++){
 	for (int j=0; j < DIM; j++){
-	// normalize
+		// convert image array back to unsigned char and normalize
 		proc_img[i][j] = (unsigned char) sqrt(pow(proc_img_x[i][j], 2) + pow(proc_img_y[i][j], 2));
 		if (proc_img[i][j] > 255){
 			printf("yes ");
