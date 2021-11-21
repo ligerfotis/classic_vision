@@ -32,6 +32,7 @@ int image_int[DIM][DIM];
 int proc_img_x[DIM][DIM];
 int proc_img_y[DIM][DIM];
 
+// convert char array to int array
 for (int i=0; i < DIM; i++){
 	for (int j=0; j < DIM; j++){
 		image_int[i][j] = (int)image[i][j];
@@ -48,10 +49,11 @@ int kernel_hor[3][3] = { { -1, -2, -1},
 							{ 1, 2, 1}};
 int max = -1;
 int min = 600;
+// start from the second pixel in each dimensions
 for (int row = 1; row < size[0] - 1; row++) {
     for (int col = 1; col < size[1] - 1; col++) {
         int cell_val = 0.0; // magnitude of cell
-        // calculate for vertical kernel
+        // calculate the convolution with the kernel
         for (int a = 0; a < 3; a++){
             for (int b = 0; b < 3; b++) {
 
@@ -61,10 +63,12 @@ for (int row = 1; row < size[0] - 1; row++) {
             	cell_val += (tmp_cell * tmp_krnl);
             }
         }
+        // calculate min and max values of the convoluted image
         if (cell_val < min)
         	min = cell_val;
         if (cell_val > max)
         	max = cell_val;
+        // insert the convoluted pixel to the filtered image array
         proc_img_x[row] [col] = cell_val;
 
 
@@ -76,10 +80,7 @@ for (int i=0; i < size[0]; i++){
 	for (int j=0; j < size[1]; j++){
 		// convert image array back to unsigned char and normalize
 		proc_img[i][j] = (unsigned char) (int)((proc_img_x[i][j]-min)*(255 - 0)/(max - min));
-		printf("%d ", proc_img[i][j]);
-
 	}
-	printf("\n");
 }
 
 }

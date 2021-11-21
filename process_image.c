@@ -12,7 +12,6 @@
 /******************************************************************/
 extern XRectangle roi;
 
-
 /******************************************************************/
 /* Main processing routine. This is called upon pressing the      */
 /* Process button of the interface.                               */
@@ -29,8 +28,8 @@ unsigned char proc_img[DIM][DIM];
 {
 
 int threshold=45;
-int b[size[0]+2][size[1]+2];
-int region[size[0]][size[1]];
+int blob_array[size[0]+2][size[1]+2];
+int labeled_pixels[size[0]][size[1]];
 int i,j;
 int count=0;
 int image_int[DIM][DIM];
@@ -40,14 +39,14 @@ for (int i=0; i < DIM; i++){
 		image_int[i][j] = (int)image[i][j];
 	}
 }
-
+// initialize the blob array
 for ( i = 0; i < size[0]+2; i++ ) {
       for ( j = 0; j < size[1]+2; j++ ) {
-		if(i==0 || j==0 || i==size[0]+1 || j==size[1]+1){
-			b[i][j]=1000;
+		if (i == 0 || j==0 || i == size[0] + 1 || j == size[1] + 1){ // it helps with initial label
+			blob_array[i][j] = 800;
 		}
 		else{
-			b[i][j]=image_int[i-1][j-1];
+			blob_array[i][j] = image_int[i-1][j-1];
 		}
 
       }
@@ -55,23 +54,27 @@ for ( i = 0; i < size[0]+2; i++ ) {
 
 for ( i = 1; i < size[0]+1; i++ ) {
       for ( j = 1; j < size[1]+1; j++ ) {
-
-    	  if( abs( b[i][j]-b[i-1][j]) <= threshold && abs( b[i][j]-b[i][j-1]) <= threshold){
-    		  region[i-1][j-1]=region[i-1][j-2];
+    	  // check the difference with the top and left pixels to be in a threshold
+    	  if( abs( blob_array[i][j]-blob_array[i-1][j]) <= threshold && abs( blob_array[i][j] -blob_array[i][j-1]) <= threshold){
+    		  labeled_pixels[i-1][j-1] = labeled_pixels[i-1][j-2];
     	  }
-
+    	  // one of the two (top or left) pixels are outside the threshold
     	  else{
-    		  if(abs(b[i][j]-b[i-1][j])>threshold && abs(b[i][j]-b[i][j-1])<=threshold){
-    			  region[i-1][j-1]=region[i-1][j-2];
+    		  // top pixel is not the same, but the left is
+    		  if( abs( blob_array[i][j]-blob_array[i-1][j])>threshold && abs(blob_array[i][j] -blob_array[i][j-1]) <= threshold){
+    			  labeled_pixels[i-1][j-1] = labeled_pixels[i-1][j-2];
     		  }
     		  else{
-    			  if(abs(b[i][j]-b[i-1][j]) <= threshold && abs(b[i][j]-b[i][j-1]) > threshold){
-    				  region[i-1][j-1] = region[i-2][j-1];
+    			  // top pixel is the same, but the left is not
+    			  if( abs( blob_array[i][j] - blob_array[i-1][j]) <= threshold && abs(blob_array[i][j]- blob_array[i][j-1]) > threshold){
+    				  labeled_pixels[i-1][j-1] = labeled_pixels[i-2][j-1];
     			  }
     			  else{
-    				  if(abs(b[i][j]-b[i-1][j])>threshold && abs(b[i][j]-b[i][j-1])>threshold){
+    				  // check if the intensity difference is greater than the threshold and assigns a new label
+    				  if( abs( blob_array[i][j] -blob_array[i-1][j]) > threshold && abs(blob_array[i][j]- blob_array[i][j-1]) > threshold){
+    					  //add a new label
     					  count++;
-    					  region[i-1][j-1] = count;
+    					  labeled_pixels[i-1][j-1] = count;
     				  }
 
     			  }
@@ -80,65 +83,62 @@ for ( i = 1; i < size[0]+1; i++ ) {
       }
 }
 
-int arr[count];
+// initialize a label array
+int labels[count];
 for ( i = 0; i < count; i++ ) {
-	arr[i]=i;
+	labels[i]=i;
 }
-
+// second pass to substitute equal labels with the smalles one
 for ( i = 1; i < size[0]+1; i++ ) {
       for ( j = 1; j < size[1]+1; j++ ) {
-    	  if(abs(b[i][j]-b[i-1][j])<=threshold && abs(b[i][j]-b[i][j-1])<=threshold){
-    		  if(region[i-2][j-1]<=region[i-1][j-2]){
-    			  int min=arr[region[i-2][j-1]-1];
-    			  int temp=region[i-2][j-1]-1;
-
-    			  while(arr[temp]!=temp){
-    				  temp=arr[temp];
+    	  if(abs(blob_array[i][j] - blob_array[i-1][j]) <= threshold && abs( blob_array[i][j] - blob_array[i][j-1]) <= threshold){
+    		  // the label of the left neighbor is bigger
+    		  if ( labeled_pixels[i-2][j-1] <= labeled_pixels[i-1][j-2]){
+    			  int min = labels[labeled_pixels[i-2][j-1]-1];
+    			  int temp = labeled_pixels[i-2][j-1]-1;
+    			  // substitute with the smallest equal label
+    			  while( labels[temp] != temp){
+    				  temp=labels[temp];
     			  }
-    			  min=arr[temp];
-    			  arr[region[i-1][j-2]-1]=min;
-    		  }
 
+    			  min=labels[temp];
+    			  labels[labeled_pixels[i-1][j-2]-1]=min;
+    		  }
+    		  // the label of the top neighbor is bigger
     		  else{
-    			  int min=arr[region[i-1][j-2]-1];
-    			  int temp=region[i-1][j-2]-1;
-    			  while(arr[temp]!=temp){
-    				  temp=arr[temp];
+
+    			  int min=labels[labeled_pixels[i-1][j-2]-1];
+    			  int temp=labeled_pixels[i-1][j-2]-1;
+    			  // substitute with the smallest equal label
+    			  while(labels[temp]!=temp){
+    				  temp=labels[temp];
     			  }
-    			  min=arr[temp];
-    			  arr[region[i-2][j-1]-1]=min;
+    			  min=labels[temp];
+    			  labels[labeled_pixels[i-2][j-1]-1]=min;
     		  }
-
     	  }
-
       }
 }
+// calculate the different regions
+int n_regions = labels[0];
 
-
-for ( i = 0; i < size[0]; i++ ) {
-      for ( j = 0; j < size[1]; j++ ) {
-    	  region[i][j]=arr[region[i][j]];
-
-      }
-}
-
-int totalregions=arr[0];
 for ( i = 0; i < count; i++ ) {
-	if(arr[i]>totalregions)
-		totalregions=arr[i];
+	if ( labels[i] > n_regions)
+		n_regions = labels[i];
 }
 
-printf("total regions: %d", totalregions);
+// substitute the labels in the original image pixel labels
+for ( i = 0; i < size[0]; i++ ) {
+      for ( j = 0; j < size[1]; j++ ) {
+    	  labeled_pixels[i][j]=labels[labeled_pixels[i][j]];
+
+      }
+}
 
 for ( i = 0; i < size[0]; i++ ) {
-
       for ( j = 0; j < size[1]; j++ ) {
-    	  float tempo=((float)region[i][j]/(float)totalregions)*255.0;
-    	  proc_img[i][j]=(unsigned char) (int)tempo;
-//    	  printf("%d ", (int)tempo);
+    	  proc_img[i][j]=(unsigned char) (int) ( ( (float)labeled_pixels[i][j] / (float) n_regions) * 255);
 	  }
-//      printf("\n");
 }
-
 
 }
