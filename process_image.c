@@ -22,76 +22,123 @@ extern XRectangle roi;
 /*              processing. This will be displayed upon return    */
 /*              from this function.                               */
 /******************************************************************/
-// pictures/chess.lpr
 void process_image(image, size, proc_img)
 unsigned char image[DIM][DIM];
 int size[2];
 unsigned char proc_img[DIM][DIM];
 {
+
+int threshold=45;
+int b[size[0]+2][size[1]+2];
+int region[size[0]][size[1]];
+int i,j;
+int count=0;
 int image_int[DIM][DIM];
-int proc_img_x[DIM][DIM];
-int proc_img_y[DIM][DIM];
 
 for (int i=0; i < DIM; i++){
 	for (int j=0; j < DIM; j++){
 		image_int[i][j] = (int)image[i][j];
 	}
 }
-//for (int i=0; i < DIM; i++){
-//	for (int j=0; j < DIM; j++){
-//		printf("%d ", image_int[i][j]);
-//	}
-//	printf("\n");
-//}
-// Sobel's Mask
-int kernel_x[3][3] = { { -1, -0, 1},
-						{ -2, 0, 2},
-						{ 1, 0, 1}};
 
-int kernel_y[3][3] = { { -1, -2, -1},
-							{ 0, 0, 0},
-							{ 1, 2, 1}};
-
-for (int row = 1; row < DIM - 1; row++) {
-    for (int col = 1; col < DIM - 1; col++) {
-        int cell_val = 0.0; // magnitude of cell
-        // calculate for vertical kernel
-        for (int a = 0; a < 3; a++){
-            for (int b = 0; b < 3; b++) {
-
-            	int tmp_cell = image_int[row - 1 + a][col - 1 + b];
-            	int tmp_krnl = kernel_x[a][b];
-
-            	cell_val += (tmp_cell * tmp_krnl);
-            }
-        }
-        proc_img_x[row] [col] = cell_val;
-        // calculate for horizontal kernel
-        for (int a = 0; a < 3; a++){
-                    for (int b = 0; b < 3; b++) {
-
-                    	int tmp_cell = image_int[row - 1 + a][col - 1 + b];
-                    	int tmp_krnl = kernel_y[a][b];
-
-                    	cell_val += (tmp_cell * tmp_krnl);
-                    }
-                }
-		proc_img_y[row] [col] = cell_val;
-
-   }
-}
-// combine and normalize filtered image
-for (int i=0; i < DIM; i++){
-	for (int j=0; j < DIM; j++){
-		// convert image array back to unsigned char and normalize
-		proc_img[i][j] = (unsigned char) sqrt(pow(proc_img_x[i][j], 2) + pow(proc_img_y[i][j], 2));
-		if (proc_img[i][j] > 255){
-			printf("yes ");
-			printf("%d\n", proc_img[i][j]);
+for ( i = 0; i < size[0]+2; i++ ) {
+      for ( j = 0; j < size[1]+2; j++ ) {
+		if(i==0 || j==0 || i==size[0]+1 || j==size[1]+1){
+			b[i][j]=1000;
 		}
-	}
+		else{
+			b[i][j]=image_int[i-1][j-1];
+		}
+
+      }
 }
 
+for ( i = 1; i < size[0]+1; i++ ) {
+      for ( j = 1; j < size[1]+1; j++ ) {
+
+    	  if( abs( b[i][j]-b[i-1][j]) <= threshold && abs( b[i][j]-b[i][j-1]) <= threshold){
+    		  region[i-1][j-1]=region[i-1][j-2];
+    	  }
+
+    	  else{
+    		  if(abs(b[i][j]-b[i-1][j])>threshold && abs(b[i][j]-b[i][j-1])<=threshold){
+    			  region[i-1][j-1]=region[i-1][j-2];
+    		  }
+    		  else{
+    			  if(abs(b[i][j]-b[i-1][j]) <= threshold && abs(b[i][j]-b[i][j-1]) > threshold){
+    				  region[i-1][j-1] = region[i-2][j-1];
+    			  }
+    			  else{
+    				  if(abs(b[i][j]-b[i-1][j])>threshold && abs(b[i][j]-b[i][j-1])>threshold){
+    					  count++;
+    					  region[i-1][j-1] = count;
+    				  }
+
+    			  }
+    		  }
+    	  }
+      }
+}
+
+int arr[count];
+for ( i = 0; i < count; i++ ) {
+	arr[i]=i;
+}
+
+for ( i = 1; i < size[0]+1; i++ ) {
+      for ( j = 1; j < size[1]+1; j++ ) {
+    	  if(abs(b[i][j]-b[i-1][j])<=threshold && abs(b[i][j]-b[i][j-1])<=threshold){
+    		  if(region[i-2][j-1]<=region[i-1][j-2]){
+    			  int min=arr[region[i-2][j-1]-1];
+    			  int temp=region[i-2][j-1]-1;
+
+    			  while(arr[temp]!=temp){
+    				  temp=arr[temp];
+    			  }
+    			  min=arr[temp];
+    			  arr[region[i-1][j-2]-1]=min;
+    		  }
+
+    		  else{
+    			  int min=arr[region[i-1][j-2]-1];
+    			  int temp=region[i-1][j-2]-1;
+    			  while(arr[temp]!=temp){
+    				  temp=arr[temp];
+    			  }
+    			  min=arr[temp];
+    			  arr[region[i-2][j-1]-1]=min;
+    		  }
+
+    	  }
+
+      }
 }
 
 
+for ( i = 0; i < size[0]; i++ ) {
+      for ( j = 0; j < size[1]; j++ ) {
+    	  region[i][j]=arr[region[i][j]];
+
+      }
+}
+
+int totalregions=arr[0];
+for ( i = 0; i < count; i++ ) {
+	if(arr[i]>totalregions)
+		totalregions=arr[i];
+}
+
+printf("total regions: %d", totalregions);
+
+for ( i = 0; i < size[0]; i++ ) {
+
+      for ( j = 0; j < size[1]; j++ ) {
+    	  float tempo=((float)region[i][j]/(float)totalregions)*255.0;
+    	  proc_img[i][j]=(unsigned char) (int)tempo;
+//    	  printf("%d ", (int)tempo);
+	  }
+//      printf("\n");
+}
+
+
+}
